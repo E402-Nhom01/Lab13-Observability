@@ -3,7 +3,8 @@ from __future__ import annotations
 import os
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from pathlib import Path
 from structlog.contextvars import bind_contextvars
 
 from .agent import LabAgent
@@ -14,8 +15,7 @@ from .middleware import CorrelationIdMiddleware
 from .pii import hash_user_id, summarize_text
 from .schemas import ChatRequest, ChatResponse
 from .tracing import tracing_enabled
-from dotenv import load_dotenv
-load_dotenv()
+
 configure_logging()
 log = get_logger()
 app = FastAPI(title="Day 13 Observability Lab")
@@ -41,6 +41,11 @@ async def health() -> dict:
 @app.get("/metrics")
 async def metrics() -> dict:
     return snapshot()
+
+
+@app.get("/dashboard")
+async def dashboard() -> FileResponse:
+    return FileResponse(Path(__file__).parent / "static" / "dashboard.html")
 
 
 @app.post("/chat", response_model=ChatResponse)
