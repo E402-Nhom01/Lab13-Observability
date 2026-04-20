@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Day 13 Observability Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0f17;
+    --panel: #141b27;
+    --border: #1f2937;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --accent: #60a5fa;
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, "SF Pro Display", Segoe UI, system-ui, sans-serif;
+  }
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  h1 { margin: 0; font-size: 22px; font-weight: 600; }
+  .meta { color: var(--muted); font-size: 13px; display: flex; gap: 16px; align-items: center; }
+  .pulse {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ok); box-shadow: 0 0 8px var(--ok);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, minmax(280px, auto));
+    gap: 16px;
+  }
+  @media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 720px)  { .grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+    display: flex; flex-direction: column; min-height: 280px;
+  }
+  .panel h2 {
+    margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: var(--text);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .panel .sub {
+    font-size: 11px; color: var(--muted); margin-bottom: 12px;
+  }
+  .big-value {
+    font-size: 42px; font-weight: 700; margin: 8px 0 4px; color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .big-value.warn { color: var(--warn); }
+  .big-value.err  { color: var(--err); }
+  .chart-wrap { position: relative; flex: 1; min-height: 180px; }
+  .side-stats { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 4px; font-size: 12px; color: var(--muted); }
+  .side-stats span strong { color: var(--text); font-weight: 600; }
+  .slo-badge {
+    font-size: 10px; padding: 2px 6px; border-radius: 4px;
+    background: rgba(96,165,250,0.1); color: var(--accent);
+    border: 1px solid rgba(96,165,250,0.3);
+  }
+  .slo-badge.err { background: rgba(248,113,113,0.1); color: var(--err); border-color: rgba(248,113,113,0.3); }
+  .slo-badge.warn { background: rgba(251,191,36,0.1); color: var(--warn); border-color: rgba(251,191,36,0.3); }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Day 13 Observability Dashboard</h1>
+    <div class="meta">service: day13-observability-lab · window: last ~10 min · refresh every 10s</div>
+  </div>
+  <div class="meta">
+    <span class="pulse" id="pulse"></span>
+    <span>last update: <strong id="lastUpdate">--</strong></span>
+  </div>
+</header>
+
+<div class="grid">
+
+  <div class="panel">
+    <h2>1. Latency P50/P95/P99 <span class="slo-badge" id="latencyBadge">SLO P95 < 2000ms</span></h2>
+    <div class="sub">milliseconds · red line = SLO threshold</div>
+    <div class="chart-wrap"><canvas id="latencyChart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <h2>2. Traffic <span class="slo-badge">cumulative</span></h2>
+    <div class="sub">total requests served</div>
+    <div class="big-value" id="trafficValue">0</div>
+    <div class="chart-wrap"><canvas id="trafficChart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <h2>3. Error Rate <span class="slo-badge" id="errorBadge">SLO < 2%</span></h2>
+    <div class="sub">percentage of failed requests</div>
+    <div class="big-value" id="errorValue">0.0%</div>
+    <div class="side-stats" id="errorBreakdown">no errors</div>
+    <div class="chart-wrap"><canvas id="errorChart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <h2>4. Cost Over Time <span class="slo-badge" id="costBadge">SLO < $2.5/day</span></h2>
+    <div class="sub">USD · cumulative</div>
+    <div class="big-value" id="costValue">$0.00</div>
+    <div class="chart-wrap"><canvas id="costChart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <h2>5. Tokens In/Out <span class="slo-badge">cumulative</span></h2>
+    <div class="sub">input vs output token totals</div>
+    <div class="side-stats">
+      <span>In: <strong id="tokensIn">0</strong></span>
+      <span>Out: <strong id="tokensOut">0</strong></span>
+      <span>Ratio: <strong id="tokenRatio">--</strong></span>
+    </div>
+    <div class="chart-wrap"><canvas id="tokensChart"></canvas></div>
+  </div>
+
+  <div class="panel">
+    <h2>6. Quality Score <span class="slo-badge" id="qualityBadge">SLO > 0.75</span></h2>
+    <div class="sub">average heuristic quality score (0-1)</div>
+    <div class="big-value" id="qualityValue">--</div>
+    <div class="chart-wrap"><canvas id="qualityChart"></canvas></div>
+  </div>
+
+</div>
+
+<script>
+const REFRESH_MS = 10000;
+const MAX_POINTS = 60;
+
+const SLO = {
+  latency_p95_ms: 2000,
+  error_rate_pct: 2,
+  daily_cost_usd: 2.5,
+  quality_score_avg: 0.75,
+};
+
+const history = {
+  timestamps: [],
+  p50: [], p95: [], p99: [],
+  traffic: [], errorRate: [], cost: [], quality: [],
+  tokensIn: [], tokensOut: [],
+};
+
+Chart.defaults.color = "#9ca3af";
+Chart.defaults.borderColor = "#1f2937";
+Chart.defaults.font.family = "-apple-system, SF Pro Display, Segoe UI, system-ui, sans-serif";
+
+function commonOptions(extra = {}) {
+  return Object.assign({
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: { duration: 200 },
+    plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 11 } } } },
+    scales: {
+      x: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { font: { size: 10 }, maxRotation: 0, autoSkipPadding: 20 } },
+      y: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { font: { size: 10 } }, beginAtZero: true },
+    },
+  }, extra);
+}
+
+function thresholdLine(value, label) {
+  return {
+    type: "line",
+    label,
+    data: Array(MAX_POINTS).fill(value),
+    borderColor: "#f87171",
+    borderDash: [5, 5],
+    borderWidth: 1,
+    pointRadius: 0,
+    fill: false,
+  };
+}
+
+const latencyChart = new Chart(document.getElementById("latencyChart"), {
+  type: "line",
+  data: { labels: [], datasets: [
+    { label: "P50", data: [], borderColor: "#34d399", backgroundColor: "rgba(52,211,153,0.1)", tension: 0.3, pointRadius: 2 },
+    { label: "P95", data: [], borderColor: "#60a5fa", backgroundColor: "rgba(96,165,250,0.1)", tension: 0.3, pointRadius: 2 },
+    { label: "P99", data: [], borderColor: "#fbbf24", backgroundColor: "rgba(251,191,36,0.1)", tension: 0.3, pointRadius: 2 },
+    { label: `SLO ${SLO.latency_p95_ms}ms`, data: [], borderColor: "#f87171", borderDash: [5,5], borderWidth: 1, pointRadius: 0, fill: false },
+  ]},
+  options: commonOptions(),
+});
+
+const trafficChart = new Chart(document.getElementById("trafficChart"), {
+  type: "line",
+  data: { labels: [], datasets: [
+    { label: "Total Requests", data: [], borderColor: "#60a5fa", backgroundColor: "rgba(96,165,250,0.15)", tension: 0.3, pointRadius: 2, fill: true },
+  ]},
+  options: commonOptions({ plugins: { legend: { display: false } } }),
+});
+
+const errorChart = new Chart(document.getElementById("errorChart"), {
+  type: "line",
+  data: { labels: [], datasets: [
+    { label: "Error Rate %", data: [], borderColor: "#f87171", backgroundColor: "rgba(248,113,113,0.15)", tension: 0.3, pointRadius: 2, fill: true },
+    { label: `SLO ${SLO.error_rate_pct}%`, data: [], borderColor: "#f87171", borderDash: [5,5], borderWidth: 1, pointRadius: 0, fill: false },
+  ]},
+  options: commonOptions({ plugins: { legend: { display: true } } }),
+});
+
+const costChart = new Chart(document.getElementById("costChart"), {
+  type: "line",
+  data: { labels: [], datasets: [
+    { label: "Total Cost $", data: [], borderColor: "#a78bfa", backgroundColor: "rgba(167,139,250,0.15)", tension: 0.3, pointRadius: 2, fill: true },
+  ]},
+  options: commonOptions({ plugins: { legend: { display: false } } }),
+});
+
+const tokensChart = new Chart(document.getElementById("tokensChart"), {
+  type: "line",
+  data: { labels: [], datasets: [
+    { label: "Tokens In", data: [], borderColor: "#34d399", backgroundColor: "rgba(52,211,153,0.1)", tension: 0.3, pointRadius: 2 },
+    { label: "Tokens Out", data: [], borderColor: "#fbbf24", backgroundColor: "rgba(251,191,36,0.1)", tension: 0.3, pointRadius: 2 },
+  ]},
+  options: commonOptions(),
+});
+
+const qualityChart = new Chart(document.getElementById("qualityChart"), {
+  type: "line",
+  data: { labels: [], datasets: [
+    { label: "Quality Avg", data: [], borderColor: "#60a5fa", backgroundColor: "rgba(96,165,250,0.15)", tension: 0.3, pointRadius: 2, fill: true },
+    { label: `SLO > ${SLO.quality_score_avg}`, data: [], borderColor: "#f87171", borderDash: [5,5], borderWidth: 1, pointRadius: 0, fill: false },
+  ]},
+  options: commonOptions({
+    scales: {
+      x: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { font: { size: 10 }, maxRotation: 0, autoSkipPadding: 20 } },
+      y: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { font: { size: 10 } }, min: 0, max: 1 },
+    },
+  }),
+});
+
+function pushHistory(snap) {
+  const ts = new Date().toLocaleTimeString();
+  history.timestamps.push(ts);
+  history.p50.push(snap.latency_p50);
+  history.p95.push(snap.latency_p95);
+  history.p99.push(snap.latency_p99);
+  history.traffic.push(snap.traffic);
+  history.cost.push(snap.total_cost_usd);
+  history.tokensIn.push(snap.tokens_in_total);
+  history.tokensOut.push(snap.tokens_out_total);
+  history.quality.push(snap.quality_avg || 0);
+
+  const errs = Object.values(snap.error_breakdown || {}).reduce((a, b) => a + b, 0);
+  const rate = snap.traffic > 0 ? (errs / snap.traffic * 100) : 0;
+  history.errorRate.push(rate);
+
+  for (const k of Object.keys(history)) {
+    if (history[k].length > MAX_POINTS) history[k].shift();
+  }
+}
+
+function badgeClass(value, threshold, higherIsBetter = false) {
+  if (higherIsBetter) return value >= threshold ? "" : "err";
+  return value > threshold ? "err" : (value > threshold * 0.8 ? "warn" : "");
+}
+
+function refresh() {
+  fetch("/metrics").then(r => r.json()).then(snap => {
+    pushHistory(snap);
+
+    const labels = history.timestamps;
+    const sloLatencyArr = Array(labels.length).fill(SLO.latency_p95_ms);
+    const sloErrorArr   = Array(labels.length).fill(SLO.error_rate_pct);
+    const sloQualityArr = Array(labels.length).fill(SLO.quality_score_avg);
+
+    latencyChart.data.labels = labels;
+    latencyChart.data.datasets[0].data = history.p50;
+    latencyChart.data.datasets[1].data = history.p95;
+    latencyChart.data.datasets[2].data = history.p99;
+    latencyChart.data.datasets[3].data = sloLatencyArr;
+    latencyChart.update("none");
+
+    trafficChart.data.labels = labels;
+    trafficChart.data.datasets[0].data = history.traffic;
+    trafficChart.update("none");
+    document.getElementById("trafficValue").textContent = snap.traffic.toLocaleString();
+
+    errorChart.data.labels = labels;
+    errorChart.data.datasets[0].data = history.errorRate;
+    errorChart.data.datasets[1].data = sloErrorArr;
+    errorChart.update("none");
+    const rateNow = history.errorRate[history.errorRate.length - 1] || 0;
+    const eEl = document.getElementById("errorValue");
+    eEl.textContent = rateNow.toFixed(2) + "%";
+    eEl.className = "big-value " + badgeClass(rateNow, SLO.error_rate_pct);
+    const br = snap.error_breakdown || {};
+    const brEl = document.getElementById("errorBreakdown");
+    brEl.innerHTML = Object.keys(br).length === 0
+      ? "no errors"
+      : Object.entries(br).map(([k,v]) => `<span>${k}: <strong>${v}</strong></span>`).join("");
+
+    costChart.data.labels = labels;
+    costChart.data.datasets[0].data = history.cost;
+    costChart.update("none");
+    document.getElementById("costValue").textContent = "$" + (snap.total_cost_usd || 0).toFixed(4);
+
+    tokensChart.data.labels = labels;
+    tokensChart.data.datasets[0].data = history.tokensIn;
+    tokensChart.data.datasets[1].data = history.tokensOut;
+    tokensChart.update("none");
+    document.getElementById("tokensIn").textContent  = (snap.tokens_in_total || 0).toLocaleString();
+    document.getElementById("tokensOut").textContent = (snap.tokens_out_total || 0).toLocaleString();
+    const ratio = snap.tokens_in_total > 0 ? (snap.tokens_out_total / snap.tokens_in_total).toFixed(2) : "--";
+    document.getElementById("tokenRatio").textContent = ratio;
+
+    qualityChart.data.labels = labels;
+    qualityChart.data.datasets[0].data = history.quality;
+    qualityChart.data.datasets[1].data = sloQualityArr;
+    qualityChart.update("none");
+    const qNow = snap.quality_avg || 0;
+    const qEl = document.getElementById("qualityValue");
+    qEl.textContent = qNow.toFixed(2);
+    qEl.className = "big-value " + badgeClass(qNow, SLO.quality_score_avg, true);
+
+    document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString();
+  }).catch(err => {
+    console.error("fetch /metrics failed:", err);
+    document.getElementById("lastUpdate").textContent = "ERROR";
+  });
+}
+
+refresh();
+setInterval(refresh, REFRESH_MS);
+</script>
+
+</body>
+</html>
