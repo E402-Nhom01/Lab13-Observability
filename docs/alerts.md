@@ -1,40 +1,40 @@
-# Alert Rules and Runbooks
+# Cảnh báo và Kịch bản ứng phó (Alert Rules and Runbooks)
 
 ## 1. High latency P95
-- Severity: P2
-- Trigger: `latency_p95_ms > 5000 for 30m`
-- Impact: tail latency breaches SLO
-- First checks:
-  1. Open top slow traces in the last 1h
-  2. Compare RAG span vs LLM span
-  3. Check if incident toggle `rag_slow` is enabled
-- Mitigation:
-  - truncate long queries
-  - fallback retrieval source
-  - lower prompt size
+- **Mức độ nghiêm trọng (Severity):** P2
+- **Điều kiện kích hoạt (Trigger):** `latency_p95_ms > 5000 for 30m`
+- **Tác động (Impact):** Độ trễ bị kéo dài quá mức, vi phạm cam kết SLO.
+- **Các bước kiểm tra (First checks):**
+  1. Mở danh sách các trace phản hồi chậm nhất trong 1 giờ qua.
+  2. So sánh thời gian xử lý (span) của RAG với thời gian của LLM.
+  3. Kiểm tra xem sự cố giả lập `rag_slow` có đang bị bật (enabled) hay không.
+- **Khắc phục kịp thời (Mitigation):**
+  - Cắt ngắt các câu truy vấn (query) quá dài.
+  - Chuyển sang nguồn tìm kiếm dự phòng (fallback retrieval source).
+  - Giảm kích thước của prompt.
 
 ## 2. High error rate
-- Severity: P1
-- Trigger: `error_rate_pct > 5 for 5m`
-- Impact: users receive failed responses
-- First checks:
-  1. Group logs by `error_type`
-  2. Inspect failed traces
-  3. Determine whether failures are LLM, tool, or schema related
-- Mitigation:
-  - rollback latest change
-  - disable failing tool
-  - retry with fallback model
+- **Mức độ nghiêm trọng (Severity):** P1
+- **Điều kiện kích hoạt (Trigger):** `error_rate_pct > 5 for 5m`
+- **Tác động (Impact):** Người dùng liên tục nhận cảnh báo lỗi hệ thống.
+- **Các bước kiểm tra (First checks):**
+  1. Nhóm (group) các log lại dựa trên trường `error_type`.
+  2. Kiểm tra chi tiết nguyên nhân bên trong các trace bị lỗi.
+  3. Phân tích xem lỗi xuất phát từ LLM, từ Web Tool hay do sai định dạng Schema.
+- **Khắc phục kịp thời (Mitigation):**
+  - Trở về phiên bản code ổn định trước đó (rollback).
+  - Tắt (disable) công cụ đang gây lỗi.
+  - Thử gọi lại (retry) thông qua một model dự phòng (fallback model).
 
 ## 3. Cost budget spike
-- Severity: P2
-- Trigger: `hourly_cost_usd > 2x_baseline for 15m`
-- Impact: burn rate exceeds budget
-- First checks:
-  1. Split traces by feature and model
-  2. Compare tokens_in/tokens_out
-  3. Check if `cost_spike` incident was enabled
-- Mitigation:
-  - shorten prompts
-  - route easy requests to cheaper model
-  - apply prompt cache
+- **Mức độ nghiêm trọng (Severity):** P2
+- **Điều kiện kích hoạt (Trigger):** `hourly_cost_usd > 2x_baseline for 15m`
+- **Tác động (Impact):** Tốc độ đốt tiền (burn rate) vượt quá ngân sách cho phép.
+- **Các bước kiểm tra (First checks):**
+  1. Phân loại các trace theo từng tính năng (feature) và model đang dùng.
+  2. So sánh lượng token đầu vào (tokens_in) và token sinh ra (tokens_out).
+  3. Kiểm tra xem sự cố giả lập `cost_spike` có đang bị bật hay không.
+- **Khắc phục kịp thời (Mitigation):**
+  - Làm ngắn gọn lại các prompt đầu vào.
+  - Rút gọi các luồng xử lý đơn giản sang các model giá rẻ hơn.
+  - Áp dụng bộ nhớ đệm (prompt cache) để tái sử dụng kết quả.
