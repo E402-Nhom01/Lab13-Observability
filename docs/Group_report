@@ -39,7 +39,7 @@
 |---|---:|---|---:|
 | Latency P95 | < 3000ms | 28d | ~160ms |
 | Error Rate | < 2% | 28d | 0% |
-| Cost Budget | < $2.5/day | 1d | < $0.05/day |
+| Cost Budget | < 2.5/day|1d|<2.5/day | 1d | < 0.05/day |
 
 ### 3.3 Alerts & Runbook
 - [ALERT_RULES_SCREENSHOT]: ![Alert](image_5.png)
@@ -60,23 +60,23 @@
 
 ### Nguyễn Đức Dũng
 - [TASKS_COMPLETED]: Thiết lập bộ Structlog, inject Middleware tạo correlation_id (req-XXX) và viết code regex ẩn giấu PII (email, phone, credit card).
-- [EVIDENCE_LINK]: (Gắn link commit Github)
+- [EVIDENCE_LINK]: https://github.com/E402-Nhom01/Lab13-Observability/commit/150c2e27a0575a9e1166f1e174df94785f10f316
 
 ### Huỳnh Thái Bảo
 - [TASKS_COMPLETED]: Tích hợp SDK Langfuse, xử lý Context và truyền tags/metadata/user_hash lên cloud hệ thống US Region, kiểm tra data luồng.
-- [EVIDENCE_LINK]: (Gắn link commit Github)
+- [EVIDENCE_LINK]: https://github.com/E402-Nhom01/Lab13-Observability/commit/88c3a2ac0e2ef9dc1e408c7f6f9d3548a7e24b8e
 
 ### Phạm Đoàn Phương Anh
 - [TASKS_COMPLETED]: Nghiên cứu các chỉ số SLOs, thiết kế ngưỡng chặn Thresholds, cấu hình file yaml tạo Alert báo động và viết kịch bản cấp cứu Runbook.
-- [EVIDENCE_LINK]: (Gắn link commit Github)
+- [EVIDENCE_LINK]: https://github.com/E402-Nhom01/Lab13-Observability/commit/898f268f7205cc7b2ec19b56b04a0ce49b202614
 
 ### Trương Minh Tiền
 - [TASKS_COMPLETED]: Xây dựng script load_test tự động giả lập người dùng, viết logic kéo file logs lên Web Streamlit hiển thị 6 panels trực quan the real-time.
-- [EVIDENCE_LINK]: (Gắn link commit Github)
+- [EVIDENCE_LINK]: https://github.com/E402-Nhom01/Lab13-Observability/commit/f001d50d3d780fb8ebea29925359743411ecd6d0
 
 ### Nguyễn Đức Trí
 - [TASKS_COMPLETED]: Quản lý luồng xử lý chính, sửa lỗi ngắt kết nối Langfuse (auth_host), hoàn thiện tài liệu Blueprint Report, setup DEMO nghiệm thu.
-- [EVIDENCE_LINK]: (Gắn link commit Github)
+- [EVIDENCE_LINK]: https://github.com/E402-Nhom01/Lab13-Observability/commit/08a65716f6fb043961b980e98245804be4749dd1
 
 ---
 
